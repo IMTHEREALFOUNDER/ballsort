@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Сортировка шариков: Цветные колбы</title>
+  <link rel="stylesheet" href="css/style.css">
+  <!-- VK Bridge: сначала локальная копия, если её нет — CDN unpkg -->
+  <script src="js/vendor/vk-bridge.min.js"></script>
+  <script>window.vkBridge || document.write('<script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"><\/script>');</script>
+</head>
+<body>
+  <div id="app">
+    <canvas id="game"></canvas>
+
+    <div id="hud">
+      <button id="btnMenu" class="icon-btn" aria-label="menu">☰</button>
+      <div id="levelLabel">Уровень 1</div>
+      <div id="coins"><span class="coin-ico"></span><span id="coinsVal">0</span></div>
+    </div>
+    <div id="tip" class="hidden"></div>
+
+    <div id="toolbar">
+      <button id="btnRestart" class="tool"><span class="ico">↻</span><span class="lbl" data-i18n="restart">Заново</span></button>
+      <button id="btnUndo" class="tool"><span class="ico">↶</span><span class="lbl" data-i18n="undo">Отмена</span><span class="badge" id="undoBadge">3</span></button>
+      <button id="btnHint" class="tool"><span class="ico">💡</span><span class="lbl" data-i18n="hint">Подсказка</span><span class="badge ad-badge">▶</span></button>
+      <button id="btnTube" class="tool"><span class="ico">＋</span><span class="lbl" data-i18n="tube">Колба</span><span class="badge ad-badge">▶</span></button>
+    </div>
+
+    <div id="toast"></div>
+
+    <div id="modal" class="hidden">
+      <div class="card" id="modalCard"></div>
+    </div>
+
+    <div id="adOverlay" class="hidden">
+      <div class="ad-box">
+        <div class="ad-title" id="adTitle">Тестовая реклама</div>
+        <div class="ad-note" id="adNote"></div>
+        <div class="ad-timer" id="adTimer">2</div>
+      </div>
+    </div>
+
+    <div id="loader"><div class="spinner"></div></div>
+  </div>
+
+  <script src="js/i18n.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/sound.js"></script>
+  <script src="js/vk.js"></script>
+  <script src="js/levels.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
