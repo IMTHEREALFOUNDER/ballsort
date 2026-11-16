@@ -131,14 +131,14 @@
       const enough = G.Save.data.coins >= opts.cost;
       this.openModal(
         '<h2>' + opts.title + '</h2><p>' + opts.text + '</p>' +
-        '<button class="btn ad" data-act="ad">' + t('watch_ad') + '</button>' +
+        (G.SDK.adsSupported() ? '<button class="btn ad" data-act="ad">' + t('watch_ad') + '</button>' : '') +
         '<button class="btn" data-act="coins"' + (enough ? '' : ' disabled') + '>' +
         t('for_coins', { n: opts.cost }) + '</button>' +
         '<button class="btn" data-act="close">' + t('close') + '</button>',
         {
           ad: () => {
             this.closeModal();
-            G.SDK.showRewarded(() => opts.onGet(), () => this.toast(t('ad_fail')));
+            G.SDK.showRewarded(() => opts.onGet(), (r) => this.adFail(r));
           },
           coins: () => {
             if (G.Save.spendCoins(opts.cost)) { this.closeModal(); opts.onGet(); }
@@ -204,14 +204,14 @@
         '<h2>' + t('win_title', { n: level }) + '</h2>' +
         '<p>' + t('moves', { n: moves }) + '</p>' +
         '<div class="reward">+' + this.coinsHtml(reward) + '</div>' +
-        '<button class="btn ad" data-act="double">' + t('double') + '</button>' +
+        (G.SDK.adsSupported() ? '<button class="btn ad" data-act="double">' + t('double') + '</button>' : '') +
         '<button class="btn primary" data-act="next">' + t('next') + '</button>',
         {
           double: (_, btn) => {
             btn.disabled = true;
             G.SDK.showRewarded(
               () => { G.Save.addCoins(reward); this.toast(t('coins_got', { n: reward })); },
-              () => { btn.disabled = false; this.toast(t('ad_fail')); }
+              (r) => { btn.disabled = false; this.adFail(r); }
             );
           },
           next: () => {
@@ -228,9 +228,11 @@
       const d = G.Save.data;
       let html = '<h2>' + t('menu') + '</h2>' +
         '<button class="btn" data-act="sound">' + t(d.sound ? 'sound_on' : 'sound_off') + '</button>' +
-        '<button class="btn" data-act="shop">' + t('shop') + '</button>' +
-        '<button class="btn" data-act="lb">' + t('leaderboard') + '</button>';
-      if (typeof G.SDK.invite === 'function') {
+        '<button class="btn" data-act="shop">' + t('shop') + '</button>';
+      if (G.SDK.hasSocial()) {
+        html += '<button class="btn" data-act="lb">' + t('leaderboard') + '</button>';
+      }
+      if (typeof G.SDK.invite === 'function' && G.SDK.hasSocial()) {
         html += '<button class="btn" data-act="invite">' + t('invite') + '</button>';
       }
       if (!d.noads && G.SDK.hasProduct('noads')) {
@@ -388,12 +390,12 @@
         '<h2>' + t('daily_title') + '</h2>' +
         '<p>' + t('daily_text', { n: streak }) + '</p>' +
         '<div class="reward">+' + this.coinsHtml(reward) + '</div>' +
-        '<button class="btn ad" data-act="x2">' + t('claim_x2') + '</button>' +
+        (G.SDK.adsSupported() ? '<button class="btn ad" data-act="x2">' + t('claim_x2') + '</button>' : '') +
         '<button class="btn primary" data-act="claim">' + t('claim') + '</button>',
         {
           x2: () => {
             this.closeModal();
-            G.SDK.showRewarded(() => claim(2), () => { claim(1); this.toast(t('ad_fail')); });
+            G.SDK.showRewarded(() => claim(2), (r) => { claim(1); this.adFail(r); });
           },
           claim: () => { this.closeModal(); claim(1); }
         }
@@ -401,6 +403,11 @@
     },
 
     /* ---------- Имитация рекламы вне Яндекса ---------- */
+    // Rewarded ad without a reward: say why (closed early vs. no ad at all).
+    adFail(reason) {
+      this.toast(t(reason === 'skipped' ? 'ad_skipped' : 'ad_fail'));
+    },
+
     mockAd(rewarded, done) {
       const ov = $('adOverlay');
       $('adTitle').textContent = t('test_ad') + (rewarded ? ' (rewarded)' : ' (interstitial)');

@@ -11,10 +11,14 @@
 
   const params = new URLSearchParams(location.search);
   const IN_VK = params.has('vk_app_id') && params.has('sign');
+  // The same mini app also runs in Odnoklassniki (apiok.ru/apps/vk): launch params as in VK plus vk_client=ok.
+  // There native ads work only in the Android app, and the leaderboard / invite boxes are not supported.
+  const IN_OK = params.get('vk_client') === 'ok';
+  const OK_ADS = !IN_OK || params.get('vk_platform') === 'mobile_android';
   const bridge = () => window.vkBridge;
 
   const SDK = {
-    platform: 'vk',
+    platform: IN_OK ? 'ok' : 'vk',
     mock: true,
     lang: (params.get('vk_language') || navigator.language || 'ru').slice(0, 2),
     player: null,
@@ -52,7 +56,7 @@
 
     // Подгрузка рекламы заранее — так она показывается без задержки
     async preloadAds() {
-      if (this.mock) return;
+      if (this.mock || !OK_ADS) return;
       for (const f of ['interstitial', 'reward']) {
         try { await bridge().send('VKWebAppCheckNativeAds', { ad_format: f }); } catch (e) { }
       }
@@ -68,8 +72,11 @@
     gameplayStop() { this.playing = false; },
 
     /* ---------- Реклама ---------- */
+    // Rewarded buttons are shown only where the platform can show ads at all (no dead buttons in OK web/iOS).
+    adsSupported() { return OK_ADS; },
+
     canInterstitial() {
-      if (G.Save.data.noads) return false;
+      if (!OK_ADS || G.Save.data.noads) return false;
       const now = Date.now();
       return now - this.startTime >= FIRST_AD_DELAY &&
         now - this.lastAd >= INTERSTITIAL_GAP &&
@@ -109,8 +116,11 @@
         .catch(finish);
     },
 
+    // onFail(reason): 'skipped' — ad was shown but closed before the end (no reward, by VK rules);
+    // 'unavailable' — there was no ad to show.
     showRewarded(onReward, onFail) {
       let rewarded = false;
+      let shown = false;
       let finished = false;
       const finish = () => {
         if (finished) return;
@@ -119,12 +129,18 @@
         this.lastAd = Math.max(this.lastAd, Date.now() - INTERSTITIAL_GAP + 60000);
         this.preloadAds();
         if (rewarded) onReward && onReward();
-        else onFail && onFail();
+        else onFail && onFail(shown ? 'skipped' : 'unavailable');
       };
       this._adBegin();
       if (this.mock) { G.UI.mockAd(true, () => { rewarded = true; finish(); }); return; }
-      bridge().send('VKWebAppShowNativeAds', { ad_format: 'reward' })
-        .then((data) => { rewarded = !!(data && data.result); finish(); })
+      if (!OK_ADS) { finish(); return; }
+      bridge().send('VKWebAppCheckNativeAds', { ad_format: 'reward' })
+        .then((check) => {
+          if (!(check && check.result)) return finish();
+          shown = true;
+          return bridge().send('VKWebAppShowNativeAds', { ad_format: 'reward', use_waterfall: false })
+            .then((data) => { rewarded = !!(data && data.result); finish(); });
+        })
         .catch(() => finish());
     },
 
@@ -152,6 +168,9 @@
     /* ---------- Рейтинг: нативное окно VK со списком друзей ---------- */
     async setScore() { /* результат передаётся при открытии окна рейтинга */ },
     async getLeaderboard() { return null; },
+
+    // Friends leaderboard and invites: VK only.
+    hasSocial() { return !IN_OK; },
 
     async openNativeLeaderboard() {
       if (this.mock) { G.UI.toast(G.t('lb_unavailable_vk')); return; }
